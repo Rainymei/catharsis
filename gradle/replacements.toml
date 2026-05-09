@@ -1,62 +1,55 @@
-[identifier]
+[block_model_dispatcher]
 type = "regex"
-condition = "< 1.21.11"
-regex = "import net.minecraft.resources.Identifier(?!;)"
-to = "import net.minecraft.resources.ResourceLocation as Identifier"
-reverseRegex = "import net.minecraft.resources.ResourceLocation as Identifier"
-reverse = "import net.minecraft.resources.Identifier"
+condition = "< 26.1"
+regex = "import net.minecraft.client.renderer.block.dispatch.BlockStateModelDispatcher(?!;)"
+to = "import net.minecraft.client.renderer.block.model.BlockModelDefinition as BlockStateModelDispatcher"
+reverseRegex = "import net.minecraft.client.renderer.block.model.BlockModelDefinition as BlockStateModelDispatcher"
+reverse = "import net.minecraft.client.renderer.block.dispatch.BlockStateModelDispatcher"
 
-[named_identifier]
+[block_state_model]
 type = "string"
-condition = "< 1.21.11"
-from = "Identifier"
-to = "ResourceLocation"
-named = true
+condition = "< 26.1"
+from = "import net.minecraft.client.renderer.block.dispatch.BlockStateModel"
+to = "import net.minecraft.client.renderer.block.model.BlockStateModel"
 
-[identifier_pattern]
+[block_and_tint_getter]
+type = "string"
+condition = "< 26.1"
+from = "import net.minecraft.client.renderer.block.BlockAndTintGetter"
+to = "import net.minecraft.world.level.BlockAndTintGetter"
+
+[fabric_rendering]
+type = "string"
+named = "true"
+condition = "< 26.1"
+from = "net.fabricmc.fabric.api.client.renderer.v1."
+to = "net.fabricmc.fabric.api.renderer.v1."
+
+[block_state_model_part]
 type = "regex"
-condition = "< 1.21.11"
-regex = "import net.minecraft.util.IdentifierPattern(?!;)"
-to = "import net.minecraft.util.ResourceLocationPattern as IdentifierPattern"
-reverseRegex = "import net.minecraft.util.ResourceLocationPattern as IdentifierPattern"
-reverse = "import net.minecraft.util.IdentifierPattern"
+condition = "< 26.1"
+regex = "import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart(?!;)"
+to = "import net.minecraft.client.renderer.block.model.BlockModelPart as BlockStateModelPart"
+reverseRegex = "import net.minecraft.client.renderer.block.model.BlockModelPart as BlockStateModelPart"
+reverse = "import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart"
 
-[identifier_argument]
+[gui_graphics_unnamed]
 type = "regex"
-condition = "< 1.21.11"
-regex = "import net.minecraft.commands.arguments.IdentifierArgument(?!;)"
-to = "import net.minecraft.commands.arguments.ResourceLocationArgument as IdentifierArgument"
-reverseRegex = "import net.minecraft.commands.arguments.ResourceLocationArgument as IdentifierArgument"
-reverse = "import net.minecraft.commands.arguments.IdentifierArgument"
+condition = "< 26.1"
+regex = "import net.minecraft.client.gui.GuiGraphicsExtractor(?!;)"
+to = "import net.minecraft.client.gui.GuiGraphics as GuiGraphicsExtractor"
+reverseRegex = "import net.minecraft.client.gui.GuiGraphics as GuiGraphicsExtractor"
+reverse = "import net.minecraft.client.gui.GuiGraphicsExtractor"
 
-[criterion]
+[camera_render_state]
 type = "string"
-condition = "< 1.21.11"
-from = "import net.minecraft.advancements.criterion"
-to = "import net.minecraft.advancements.critereon"
+condition = "< 26.1"
+from = "import net.minecraft.client.renderer.state.level.CameraRenderState"
+to = "import net.minecraft.client.renderer.state.CameraRenderState"
 
-[render_type]
+[gui_graphics]
 type = "string"
-condition = "< 1.21.11"
-from = "import net.minecraft.client.renderer.rendertype.RenderType"
-to = "import net.minecraft.client.renderer.RenderType"
-
-[util]
-type = "string"
-condition = "< 1.21.11"
-from = "net.minecraft.util.Util"
-to = "net.minecraft.Util"
-
-[player_model]
-type = "string"
-condition = "< 1.21.11"
-from = "net.minecraft.client.model.player.PlayerModel"
-to = "net.minecraft.client.model.PlayerModel"
-
-[replacements]
-type = "regex"
-condition = "< 1.21.11"
-regex = "import net.minecraft.client.renderer.RenderTypes(?!;)"
-to = "import net.minecraft.client.renderer.RenderType as RenderTypes"
-reverseRegex = "import net.minecraft.client.renderer.RenderType as RenderTypes"
-reverse = "import net.minecraft.client.renderer.RenderTypes"
+named = "true"
+condition = "< 26.1"
+from = "GuiGraphicsExtractor"
+to = "GuiGraphics"

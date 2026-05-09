@@ -1,8 +1,10 @@
 package me.owdding.catharsis.features.pack.config
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonPrimitive
 import me.owdding.catharsis.utils.extensions.CycleButtonBuilder
 import me.owdding.catharsis.utils.extensions.withClickHandler
+import me.owdding.catharsis.utils.ui.ResizingEqualSpacingLayout
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.*
 import net.minecraft.client.gui.components.tabs.Tab
@@ -14,12 +16,15 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.CommonComponents
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 import net.minecraft.util.CommonColors
 import net.minecraft.util.Util
 import tech.thatgravyboat.skyblockapi.helpers.McClient
 import tech.thatgravyboat.skyblockapi.helpers.McFont
 import tech.thatgravyboat.skyblockapi.utils.extentions.asBoolean
+import tech.thatgravyboat.skyblockapi.utils.extentions.asInt
 import tech.thatgravyboat.skyblockapi.utils.extentions.asString
+import tech.thatgravyboat.skyblockapi.utils.extentions.asStringList
 import java.util.function.Consumer
 import kotlin.math.max
 
@@ -38,7 +43,7 @@ class PackConfigScreen(private val parent: Screen?, pack: String, private val op
         for (option in options) {
             when (option) {
                 is PackConfigOption.Tab -> {
-                    val layout = contents.getOrPut(option.title) { LinearLayout.vertical().spacing(8) }
+                    val layout = contents.getOrPut(option.title(null)) { LinearLayout.vertical().spacing(8) }
                     option.options.map(this::getOptionElement).forEach(layout::addChild)
                 }
                 else -> {
@@ -49,14 +54,11 @@ class PackConfigScreen(private val parent: Screen?, pack: String, private val op
         }
 
         this.navigation = this.addRenderableWidget(
-            TabNavigationBar.builder(this.tabs, this.width)
-                .addTabs(
-                    *contents
-                        .map { (title, layout) -> PackConfigScreenTab(title, layout) }
-                        .sortedBy { tab -> if (tab.title == GENERAL_TAB) 0 else 1 }
-                        .toTypedArray(),
-                )
-                .build(),
+            MinSizedTabNavigation(
+                this.width,
+                this.tabs,
+                contents.map { (title, layout) -> PackConfigScreenTab(title, layout) }.sortedBy { tab -> if (tab.title == GENERAL_TAB) 0 else 1 }
+            )
         )
         this.navigation!!.selectTab(0, false)
 
@@ -69,7 +71,8 @@ class PackConfigScreen(private val parent: Screen?, pack: String, private val op
 
     override fun repositionElements() {
         val nav = this.navigation ?: return
-        nav.setWidth(this.width)
+        //~ if >= 26.1 'setWidth' -> 'updateWidth'
+        nav.updateWidth(this.width)
         nav.arrangeElements()
 
         val navBottom = nav.rectangle.bottom()
@@ -87,32 +90,38 @@ class PackConfigScreen(private val parent: Screen?, pack: String, private val op
         }
     }
 
+    private fun handleComponentClick(handler: Style) {
+        handler.clickEvent?.let { event ->
+            when (event) {
+                is ClickEvent.OpenUrl -> Util.getPlatform().openUri(event.uri)
+                is ClickEvent.CopyToClipboard -> McClient.clipboard = event.value
+                else -> println("Cannot handle click event of type ${event.action()}")
+            }
+        }
+    }
+
     private fun getOptionElement(option: PackConfigOption): LayoutElement {
         val font = Minecraft.getInstance().font
-        val line = EqualSpacingLayout(310, 0, EqualSpacingLayout.Orientation.HORIZONTAL)
+        val line = ResizingEqualSpacingLayout.Horizontal(310)
+
+        val titleWidget = StringWidget(option.title(null), font).apply {
+            this.active = true
+            this.withClickHandler(::handleComponentClick)
+        }
+        val descWidget = MultiLineTextWidget(Component.empty().append(option.description(null)).withColor(CommonColors.LIGHT_GRAY), font).apply {
+            this.active = true
+            this.setCentered(false)
+            this.setMaxWidth(225)
+            this.withClickHandler(::handleComponentClick)
+        }
 
         line.addChild(
             LinearLayout.vertical().spacing(4).apply {
-                this.addChild(StringWidget(option.title, font))
-                this.addChild(
-                    MultiLineTextWidget(Component.empty().append(option.description).withColor(CommonColors.LIGHT_GRAY), font).apply {
-                        this.active = true
-                        this.setCentered(false)
-                        this.setMaxWidth(225)
-                        this.withClickHandler {
-                            it.clickEvent?.let { event ->
-                                when (event) {
-                                    is ClickEvent.OpenUrl -> Util.getPlatform().openUri(event.uri)
-                                    is ClickEvent.CopyToClipboard -> McClient.clipboard = event.value
-                                    else -> println("Cannot handle click event of type ${event.action()}")
-                                }
-                            }
-                        }
-                    },
-                )
+                this.addChild(titleWidget)
+                this.addChild(descWidget)
             },
         )
-        getOptionWidget(option)?.let(line::addChild)
+        getOptionWidget(option, titleWidget, descWidget)?.let(line::addChild)
 
         if (option is PackConfigOption.Separator || option is PackConfigOption.Information) {
             return LinearLayout.vertical().apply {
@@ -124,11 +133,19 @@ class PackConfigScreen(private val parent: Screen?, pack: String, private val op
         return line
     }
 
-    private fun getOptionWidget(option: PackConfigOption): AbstractWidget? = when (option) {
+    private fun getOptionWidget(option: PackConfigOption, titleWidget: StringWidget, descWidget: MultiLineTextWidget): AbstractWidget? = when (option) {
         is PackConfigOption.Bool -> {
             val value = config.get(option.id).asBoolean(option.default)
+
+            fun updateWidgets(value: Boolean) {
+                titleWidget.message = option.title(value.toString())
+                descWidget.text = option.description(value.toString())
+            }
+
+            updateWidgets(value)
             CycleButton.onOffBuilder(value).displayOnlyValue().create(0, 0, 44, 20, Component.empty()) { _, newValue ->
                 config.set(option.id, JsonPrimitive(newValue))
+                updateWidgets(newValue)
             }
         }
 
@@ -136,17 +153,83 @@ class PackConfigScreen(private val parent: Screen?, pack: String, private val op
             var value = config.get(option.id).asString()?.let { option.options.find { entry -> entry.value == it } } ?: option.default
             val width = max(option.options.maxOf { McFont.width(it.text) } + 8, 44)
 
+            fun updateWidgets(entry: PackConfigOption.Dropdown.Entry) {
+                titleWidget.message = option.title(entry.value)
+                descWidget.text = option.description(entry.value)
+            }
+
+            updateWidgets(value)
             CycleButtonBuilder(PackConfigOption.Dropdown.Entry::text) { value }
                 .displayOnlyValue()
                 .withValues(option.options)
                 .create(0, 0, width, 20, Component.empty()) { _, entry ->
                     value = entry
                     config.set(option.id, JsonPrimitive(entry.value))
+                    updateWidgets(entry)
                 }
+        }
+
+        is PackConfigOption.Select if option.single -> {
+            val value = config.get(option.id).asString()?.let { option.options.find { entry -> entry.value == it } } ?: option.default.first()
+            val width = max(option.options.maxOf { max(McFont.width(it.selectedText), McFont.width(it.unselectedText)) } + 8, 88)
+
+            fun updateWidgets(entry: PackConfigOption.Select.SelectEntry) {
+                titleWidget.message = option.title(entry.value)
+                descWidget.text = option.description(entry.value)
+            }
+
+            updateWidgets(value)
+            SelectButton<PackConfigOption.Select.SelectEntry>(width, 20).apply {
+                this.singleValue = true
+                this.onChange = { selected ->
+                    config.set(option.id, JsonPrimitive(selected.first().value))
+                    updateWidgets(selected.first())
+                }
+
+                for (entry in option.options) {
+                    this.withEntry(entry, entry.selectedText, entry.unselectedText, entry == value)
+                }
+            }
+        }
+
+        is PackConfigOption.Select if true -> {
+            val values = config.get(option.id).asStringList().mapNotNull { str -> option.options.find { it.value == str } }.toSet()
+            val width = max(option.options.maxOf { max(McFont.width(it.selectedText), McFont.width(it.unselectedText)) } + 8, 88)
+
+            SelectButton<PackConfigOption.Select.SelectEntry>(width, 20).apply {
+                this.singleValue = false
+                this.onChange = { selected ->
+                    val json = JsonArray(selected.size)
+                    selected.forEach { json.add(it.value) }
+                    config.set(option.id, json)
+                }
+
+                for (entry in option.options) {
+                    this.withEntry(entry, entry.selectedText, entry.unselectedText, entry in values)
+                }
+            }
+        }
+
+        is PackConfigOption.Color -> {
+            val value = config.get(option.id).asInt(option.default)
+
+            ColorPickerButton(76, 20, value, option.alpha) { newColor ->
+                config.set(option.id, JsonPrimitive(newColor))
+            }
         }
 
         else -> null
     }
+
+    private var MultiLineTextWidget.text: Component
+        get() = this.message
+        set(value) {
+            val height = this.height
+            this.message = value
+            if (height != this.height) {
+                this@PackConfigScreen.repositionElements()
+            }
+        }
 
     companion object {
 
@@ -154,7 +237,7 @@ class PackConfigScreen(private val parent: Screen?, pack: String, private val op
     }
 }
 
-class PackConfigScreenTab(val title: Component, contents: Layout) : Tab {
+class PackConfigScreenTab(val title: Component, val contents: Layout) : Tab {
 
     val layout: ScrollableLayout = ScrollableLayout(McClient.self, contents, 130).also {
         it.setMinWidth(310)
@@ -165,6 +248,8 @@ class PackConfigScreenTab(val title: Component, contents: Layout) : Tab {
     override fun getTabExtraNarration(): Component = Component.empty()
     override fun visitChildren(consumer: Consumer<AbstractWidget>) = layout.visitWidgets(consumer)
     override fun doLayout(rectangle: ScreenRectangle) {
+        this.contents.arrangeElements()
+        this.contents.visitChildren { (it as? Layout)?.arrangeElements() }
         this.layout.setMaxHeight(rectangle.height - 20)
         this.layout.arrangeElements()
         FrameLayout.centerInRectangle(this.layout, rectangle)

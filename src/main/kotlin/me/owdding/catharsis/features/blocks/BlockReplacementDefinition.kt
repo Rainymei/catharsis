@@ -8,12 +8,12 @@ import me.owdding.catharsis.generated.CatharsisCodecs
 import me.owdding.catharsis.utils.codecs.IncludedCodecs
 import me.owdding.catharsis.utils.codecs.SavableData
 import me.owdding.ktcodecs.IncludedCodec
+import net.minecraft.client.renderer.block.BlockAndTintGetter
 import net.minecraft.client.resources.model.ModelBaker
 import net.minecraft.core.BlockPos
 import net.minecraft.resources.Identifier
 import net.minecraft.util.ExtraCodecs
 import net.minecraft.util.RandomSource
-import net.minecraft.world.level.BlockAndTintGetter
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 
@@ -32,6 +32,7 @@ interface BlockReplacement {
     fun <T : Any> bake(baker: BlockReplacement.() -> BlockReplacementSelector<T>): BlockReplacementSelector<T>
     fun bakeModel(baker: ModelBaker, block: Block): BlockReplacementSelector<BlockReplacementEntry> = bake { bakeModel(baker, block) }
     fun bakeSounds(block: Block): BlockReplacementSelector<BlockSoundDefinition> = bake { bakeSounds(block) }
+    fun bakeDisplay(block: Block): BlockReplacementSelector<BlockDisplayDefinition> = bake { bakeDisplay(block) }
 
     fun select(
         level: BlockAndTintGetter?,
@@ -53,5 +54,6 @@ object BlockStateDefinitions {
         ID_MAPPER.put(Catharsis.id("per_area"), CatharsisCodecs.getMapCodec<PerAreaBlockReplacement.Completable>())
         ID_MAPPER.put(Catharsis.id("random"), CatharsisCodecs.getMapCodec<RandomBlockReplacement.Completable>())
         ID_MAPPER.put(Catharsis.id("conditional"), CatharsisCodecs.getMapCodec<ConditionalBlockReplacement.Completable>())
+        ID_MAPPER.put(Catharsis.id("layered"), CatharsisCodecs.getMapCodec<LayeredBlockReplacements.Completable>())
     }
 }

@@ -8,10 +8,12 @@ import com.mojang.serialization.codecs.RecordCodecBuilder
 import me.owdding.catharsis.Catharsis
 import me.owdding.catharsis.generated.CodecUtils
 import me.owdding.catharsis.utils.Utils
+import me.owdding.catharsis.utils.types.Base64String
+import me.owdding.catharsis.utils.types.requireBase64Padding
 import me.owdding.ktcodecs.IncludedCodec
 import net.minecraft.client.color.item.ItemTintSource
 import net.minecraft.client.color.item.ItemTintSources
-import net.minecraft.client.renderer.block.model.BlockModelDefinition
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelDispatcher
 import net.minecraft.client.renderer.item.properties.conditional.ConditionalItemModelProperties
 import net.minecraft.client.renderer.item.properties.conditional.ConditionalItemModelProperty
 import net.minecraft.core.Holder
@@ -24,6 +26,7 @@ import net.minecraft.resources.Identifier
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.tags.TagKey
 import net.minecraft.util.ExtraCodecs
+import net.minecraft.util.InclusiveRange
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.ai.attributes.Attribute
 import net.minecraft.world.inventory.MenuType
@@ -93,7 +96,7 @@ object IncludedCodecs {
     val itemCodec: Codec<Item> = BuiltInRegistries.ITEM.byNameCodec()
 
     @IncludedCodec
-    val blockModelDefinitionCodec: MapCodec<BlockModelDefinition> = MapCodec.assumeMapUnsafe(BlockModelDefinition.CODEC)
+    val blockModelDefinitionCodec: MapCodec<BlockStateModelDispatcher> = MapCodec.assumeMapUnsafe(BlockStateModelDispatcher.CODEC)
 
     @IncludedCodec(named = "block_tag_or_list")
     val tagOrBlocksCodec: Codec<Either<TagKey<Block>, Set<Block>>> = Codec.either(
@@ -141,4 +144,13 @@ object IncludedCodecs {
 
     @IncludedCodec
     val conditionalItemPropertyCodec: MapCodec<ConditionalItemModelProperty> = ConditionalItemModelProperties.MAP_CODEC
+
+    @IncludedCodec
+    val inclusiveRangeInt: Codec<InclusiveRange<Int>> = InclusiveRange.INT
+
+//     @IncludedCodec(keyable = true, named = "base64_string")
+    val BASE64_STRING_CODEC: Codec<Base64String> = Codec.STRING.xmap(
+        { it.requireBase64Padding() },
+        { it },
+    )
 }
